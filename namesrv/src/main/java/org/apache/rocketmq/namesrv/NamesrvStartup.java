@@ -52,11 +52,11 @@ public class NamesrvStartup {
 
     public static NamesrvController main0(String[] args) {
         System.setProperty(RemotingCommand.REMOTING_VERSION_KEY, Integer.toString(MQVersion.CURRENT_VERSION));
-
+        //如果缓冲区为空   默认为4M
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_SNDBUF_SIZE)) {
             NettySystemConfig.socketSndbufSize = 4096;
         }
-
+        //如果接受缓冲区为空 默认为4M
         if (null == System.getProperty(NettySystemConfig.COM_ROCKETMQ_REMOTING_SOCKET_RCVBUF_SIZE)) {
             NettySystemConfig.socketRcvbufSize = 4096;
         }
@@ -70,9 +70,11 @@ public class NamesrvStartup {
                 System.exit(-1);
                 return null;
             }
-
+            // 初始化配置文件,加载namesrv的相关配置项
             final NamesrvConfig namesrvConfig = new NamesrvConfig();
+            // 加载nettyServerConfig配置项( Netty是一个高性能、异步事件驱动的NIO框架，用来与其他模块通信交互，例如broker模块通信）,netty具体的启动工作为后续函数controller.start();
             final NettyServerConfig nettyServerConfig = new NettyServerConfig();
+            // 设置netty监听端口为9876
             nettyServerConfig.setListenPort(9876);
             if (commandLine.hasOption('c')) {
                 String file = commandLine.getOptionValue('c');
@@ -112,10 +114,15 @@ public class NamesrvStartup {
 
             MixAll.printObjectProperties(log, namesrvConfig);
             MixAll.printObjectProperties(log, nettyServerConfig);
-
+            // 初始化服务控制对象（NamesrvController为核心类，保存了大量的namesrv需要的信息）
             final NamesrvController controller = new NamesrvController(namesrvConfig, nettyServerConfig);
 
             // remember all configs to prevent discard
+            // initialize核心函数，其中主要作用为：
+            // 1、初始化netty相关配置
+            // 2、定义broker与namesrv通过netty进行通信，的通信协议（即请求中带上code，来代表对应调用哪个方法函数）
+            // 3、定时每10s扫描broker信息，如果过期则移除
+            // 4、定时每10s将configTable的信息记录到日志文件中
             controller.getConfiguration().registerConfig(properties);
 
             boolean initResult = controller.initialize();

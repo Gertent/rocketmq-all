@@ -91,7 +91,7 @@ public interface MQAdmin {
         InterruptedException, MQClientException;
 
     /**
-     * Query messages
+     * Query messages 根据各种条件来查询Message信息
      *
      * @param topic message topic
      * @param key message key index word

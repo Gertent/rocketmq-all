@@ -59,10 +59,15 @@ public class NamesrvController {
     private Configuration configuration;
 
     public NamesrvController(NamesrvConfig namesrvConfig, NettyServerConfig nettyServerConfig) {
+        // namesrv相关配置
         this.namesrvConfig = namesrvConfig;
+        // netty相关配置
         this.nettyServerConfig = nettyServerConfig;
+        // KV配置管理
         this.kvConfigManager = new KVConfigManager(this);
+        // 路由信息、topic信息管理
         this.routeInfoManager = new RouteInfoManager();
+        // broker管理服务
         this.brokerHousekeepingService = new BrokerHousekeepingService(this);
         this.configuration = new Configuration(
             log,
@@ -76,10 +81,15 @@ public class NamesrvController {
         this.kvConfigManager.load();
         //NettyRemotingServer实例化（这里会作下当前系统的判断，是否为Linux，至于这里判断是否为linux或windows的操作也很简单，就是System.getProperty("os.name")，检查是否包含"linux"或"windows"）。作这些处理也不是为什么特别的操作，就是线程名字的相关处理，因为这里初始化了不少操作，也初始化相关的一些线程池）
         this.remotingServer = new NettyRemotingServer(this.nettyServerConfig, this.brokerHousekeepingService);
-
+        // 初始化线程池（根据getServerWorkerThreads值，启动相应数量线程）
         this.remotingExecutor =
             Executors.newFixedThreadPool(nettyServerConfig.getServerWorkerThreads(), new ThreadFactoryImpl("RemotingExecutorThread_"));
 
+        // 此注册函数主要作用就是，定义RequestCode，用来作为netty的通信协议字段
+        // 即：如果broker通过netty发送通信请求，其中请求信息中带有code == RequestCode.REGISTER_BROKER，
+        //那么在namesrv的netty端接收到该通信连接时候，
+        // 则对应调用namesrv的DefaultRequestProcessor类下面的registerBroker方法，从而完成broker向namesrv注册
+        // 具体请参考com.alibaba.rocketmq.namesrv.processor.DefaultRequestProcessor类
         this.registerProcessor();
 
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
@@ -91,7 +101,7 @@ public class NamesrvController {
         }, 5, 10, TimeUnit.SECONDS);
 
         this.scheduledExecutorService.scheduleAtFixedRate(new Runnable() {
-            //每隔10min打印出所有k-v
+            //每隔10min打印出所有k-v,// 定时将configTable相关信息记录到日志文件中
             @Override
             public void run() {
                 NamesrvController.this.kvConfigManager.printAllPeriodically();

@@ -24,7 +24,10 @@ import org.apache.rocketmq.client.exception.MQClientException;
 import org.apache.rocketmq.common.message.Message;
 import org.apache.rocketmq.common.message.MessageQueue;
 import org.apache.rocketmq.remoting.exception.RemotingException;
-
+/**
+ * 用来发送生产者中的消息，包含了start和shutdown以及各种send方法，其中send方法返回值为sendResult，里面包含着SendStatus也就是发送的状态。send 消息方法，只要不抛异常，就代表发送成功。
+ * 但是发送成功会有多个状态，在 sendResult 里定义
+*/
 public interface MQProducer extends MQAdmin {
     void start() throws MQClientException;
 
