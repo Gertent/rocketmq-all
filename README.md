@@ -59,3 +59,10 @@ rocketmq-filtersrv：消息过滤器
 rocketmq-broker：服务端，接受消息，存储消息，consumer拉取消息
 rocketmq-tools：命令行工具
 rocketmq-namesrv：NameServer，类似服务注册中心，broker在这里注册，consumer和producer在这里找到broker地址
+
+通信关系：
+Producer和Name Server：每一个Producer会与Name Server集群中的一台机器建立TCP连接，会从这台Name Server上拉取路由信息。
+Producer和broker：Producer会和它要发送的topic相关的master类型的broker建立TCP连接，用于发送消息以及定时的心跳信息。broker中会记录该Producer的信息，供查询使用
+broker与Name Server：broker（不管是master还是slave）会和每一台Name Server机器来建立TCP连接。broker在启动的时候会注册自己配置的topic信息到Name Server集群的每一台机器中。即每一台Name Server都有该broker的topic的配置信息。master与master之间无连接，master与slave之间有连接
+Consumer和Name Server：每一个Consumer会和Name Server集群中的一台机器建立TCP连接，会从这台Name Server上拉取路由信息，进行负载均衡
+Consumer和broker：Consumer可以与master或者slave的broker建立TCP连接来进行消费消息，Consumer也会向它所消费的broker发送心跳信息，供broker记录。

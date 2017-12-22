@@ -431,6 +431,13 @@ public class DefaultMQProducerImpl implements MQProducerInner {
         this.mqFaultStrategy.updateFaultItem(brokerName, currentLatency, isolation);
     }
 
+    /**
+     * 发送消息
+     * @param msg
+     * @param communicationMode SYNC:同步（默认）, ASYNC：异步（callback）, ONEWAY：单向
+     * @param sendCallback
+     * @param timeout
+    */
     private SendResult sendDefaultImpl(
         Message msg,
         final CommunicationMode communicationMode,
@@ -439,12 +446,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
     ) throws MQClientException, RemotingException, MQBrokerException, InterruptedException {
         // 校验 Producer 处于运行状态
         this.makeSureStateOK();
+        // 检查msg是否合法：是否为null、topic,body是否为空、body是否超长
         Validators.checkMessage(msg, this.defaultMQProducer);
 
         final long invokeID = random.nextLong();
         long beginTimestampFirst = System.currentTimeMillis();
         long beginTimestampPrev = beginTimestampFirst;
         long endTimestamp = beginTimestampFirst;
+        // 获取topic路由信息,producer初始化的时候会从namesrv获取topic的路由信息更新到本地缓存，所以tryToFindTopicPublishInfo会先从本地缓存取，如果没取到再从namesrv获取最新的路由信息
         TopicPublishInfo topicPublishInfo = this.tryToFindTopicPublishInfo(msg.getTopic());
         if (topicPublishInfo != null && topicPublishInfo.ok()) {
             MessageQueue mq = null;
@@ -455,12 +464,14 @@ public class DefaultMQProducerImpl implements MQProducerInner {
             String[] brokersSent = new String[timesTotal];
             for (; times < timesTotal; times++) {
                 String lastBrokerName = null == mq ? null : mq.getBrokerName();
+                // 从路由信息中选择一个消息队列
                 MessageQueue tmpmq = this.selectOneMessageQueue(topicPublishInfo, lastBrokerName);
                 if (tmpmq != null) {
                     mq = tmpmq;
                     brokersSent[times] = mq.getBrokerName();
                     try {
                         beginTimestampPrev = System.currentTimeMillis();
+                        // 将消息发送到该队列上去
                         sendResult = this.sendKernelImpl(msg, mq, communicationMode, sendCallback, topicPublishInfo, timeout);
                         endTimestamp = System.currentTimeMillis();
                         this.updateFaultItem(mq.getBrokerName(), endTimestamp - beginTimestampPrev, false);
